@@ -4,17 +4,16 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   BANCO SIMPLES EM MEMÓRIA
+   DADOS
 ========================= */
 let users = [
   { user: "admin", pass: "1234", credits: 200 }
 ];
 
-let sessions = {};
 let keys = [];
 
 /* =========================
-   LOGIN PAGE
+   LOGIN
 ========================= */
 app.get("/", (req, res) => {
   res.send(`
@@ -34,12 +33,14 @@ app.get("/", (req, res) => {
         font-size:30px;
         margin-top:30px;
         font-weight:bold;
+        text-shadow:0 0 10px white;
       }
 
       .status {
         text-align:center;
         color:#00ff88;
         margin-top:10px;
+        text-shadow:0 0 10px #00ff88;
       }
 
       .dot {
@@ -53,7 +54,7 @@ app.get("/", (req, res) => {
 
       @keyframes pulse {
         0%{transform:scale(1);}
-        50%{transform:scale(1.4);}
+        50%{transform:scale(1.5);}
         100%{transform:scale(1);}
       }
 
@@ -63,6 +64,7 @@ app.get("/", (req, res) => {
         background:#111;
         padding:20px;
         border-radius:10px;
+        box-shadow:0 0 20px white;
       }
 
       input {
@@ -118,7 +120,7 @@ app.get("/", (req, res) => {
           if(d.ok){
             window.location="/dashboard";
           } else {
-            alert("login inválido");
+            alert("Login inválido");
           }
         })
       }
@@ -143,20 +145,15 @@ app.post("/login", (req, res) => {
 });
 
 /* =========================
-   DASHBOARD (KEY PANEL)
+   DASHBOARD
 ========================= */
 app.get("/dashboard", (req, res) => {
 
   let user = users[0];
 
   let list = "";
-
-  keys.slice().reverse().forEach((k,i)=>{
-    list += `
-      <div style="padding:8px;border-bottom:1px solid #222;">
-        ${k.type} → ${k.key}
-      </div>
-    `;
+  keys.slice().reverse().forEach(k=>{
+    list += `<div style="padding:5px;border-bottom:1px solid #222">${k.key}</div>`;
   });
 
   res.send(`
@@ -177,6 +174,7 @@ app.get("/dashboard", (req, res) => {
         background:#111;
         font-size:22px;
         font-weight:bold;
+        text-shadow:0 0 10px white;
       }
 
       .cards {
@@ -192,6 +190,7 @@ app.get("/dashboard", (req, res) => {
         width:150px;
         text-align:center;
         border-radius:10px;
+        box-shadow:0 0 10px #222;
       }
 
       .panel {
@@ -200,6 +199,7 @@ app.get("/dashboard", (req, res) => {
         background:#111;
         padding:20px;
         border-radius:10px;
+        box-shadow:0 0 15px white;
       }
 
       .shop {
@@ -223,14 +223,30 @@ app.get("/dashboard", (req, res) => {
         background:white;
         border:none;
         cursor:pointer;
+        font-weight:bold;
       }
 
-      .qtd {
-        display:flex;
+      /* MODAL */
+      .modal {
+        display:none;
+        position:fixed;
+        top:0;left:0;
+        width:100%;
+        height:100%;
+        background:rgba(0,0,0,0.9);
         justify-content:center;
         align-items:center;
-        gap:10px;
       }
+
+      .modalBox {
+        width:400px;
+        background:#111;
+        padding:20px;
+        border-radius:10px;
+        box-shadow:0 0 20px white;
+        text-align:center;
+      }
+
     </style>
   </head>
 
@@ -239,13 +255,8 @@ app.get("/dashboard", (req, res) => {
     <div class="top">📺 Companhia Shelby Panel</div>
 
     <div class="cards">
-      <div class="card">
-        💰 Créditos<br>${user.credits}
-      </div>
-
-      <div class="card">
-        🔑 Keys<br>${keys.length}
-      </div>
+      <div class="card">💰 Créditos<br>${user.credits}</div>
+      <div class="card">🔑 Keys<br>${keys.length}</div>
     </div>
 
     <div class="panel">
@@ -261,25 +272,34 @@ app.get("/dashboard", (req, res) => {
 
       </div>
 
-      <br>
-
-      <div class="qtd">
+      <div style="text-align:center;margin-top:10px;">
         <button onclick="minus()">-</button>
-        <div id="qtd">1</div>
+        <span id="qtd">1</span>
         <button onclick="plus()">+</button>
       </div>
 
       <button onclick="gen()">GERAR KEYS</button>
 
-      <h4>Keys</h4>
-      ${list}
+    </div>
 
+    <!-- MODAL -->
+    <div id="modal" class="modal">
+      <div class="modalBox">
+        <h3>🔑 Keys Geradas</h3>
+
+        <div id="keysBox"></div>
+
+        <button onclick="copy()">Copiar Todas</button>
+        <button onclick="closeModal()">Fechar</button>
+      </div>
     </div>
 
     <script>
+
       let type="1d";
       let cost=10;
       let qtd=1;
+      let lastKeys=[];
 
       function set(t,c){
         type=t;
@@ -302,13 +322,35 @@ app.get("/dashboard", (req, res) => {
         fetch("/generate-key",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({
-            type,
-            qtd,
-            cost
-          })
-        }).then(()=>location.reload());
+          body:JSON.stringify({type,qtd,cost})
+        })
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.error) return alert("Sem créditos");
+
+          lastKeys = d.keys;
+
+          let box = document.getElementById("keysBox");
+          box.innerHTML="";
+
+          d.keys.forEach(k=>{
+            box.innerHTML += "<div>"+k+"</div>";
+          });
+
+          document.getElementById("modal").style.display="flex";
+        });
       }
+
+      function closeModal(){
+        document.getElementById("modal").style.display="none";
+        location.reload();
+      }
+
+      function copy(){
+        navigator.clipboard.writeText(lastKeys.join("\\n"));
+        alert("Copiado!");
+      }
+
     </script>
 
   </body>
@@ -317,7 +359,7 @@ app.get("/dashboard", (req, res) => {
 });
 
 /* =========================
-   GERAR KEYS + CREDITOS
+   GERAR KEYS
 ========================= */
 app.post("/generate-key", (req, res) => {
 
@@ -335,14 +377,17 @@ app.post("/generate-key", (req, res) => {
 
   user.credits -= total;
 
+  let created = [];
+
   for(let i=0;i<qtd;i++){
-    keys.push({
-      type,
-      key: "SHELBY-" + Math.random().toString(36).substring(2,8).toUpperCase()
-    });
+    let key = "SHELBY-" + Math.random().toString(36).substring(2,8).toUpperCase();
+
+    keys.push({ key, type });
+
+    created.push(key);
   }
 
-  res.json({ ok:true });
+  res.json({ ok:true, keys:created });
 });
 
 /* =========================
