@@ -5,9 +5,83 @@ app.use(express.json());
 
 let logs = [];
 
-// HOME
+// LOGIN SIMPLES (sessão fake)
+let logged = false;
+
+// HOME (LOGIN)
 app.get("/", (req, res) => {
-  res.send("Shelby PRO online");
+  res.send(`
+  <html>
+  <head>
+    <title>Login</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0b0f19;
+        color: white;
+        font-family: Arial;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .box {
+        background: #111827;
+        padding: 30px;
+        border-radius: 12px;
+        width: 300px;
+        text-align: center;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 6px;
+        border: none;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 15px;
+        border: none;
+        border-radius: 6px;
+        background: #3b82f6;
+        color: white;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <div class="box">
+      <h2>🔐 Shelby Login</h2>
+
+      <input id="user" placeholder="usuário" />
+      <input id="pass" type="password" placeholder="senha" />
+
+      <button onclick="login()">Entrar</button>
+    </div>
+
+    <script>
+      function login(){
+        const u = document.getElementById("user").value;
+        const p = document.getElementById("pass").value;
+
+        if(u === "admin" && p === "1234"){
+          window.location.href = "/dashboard";
+        } else {
+          alert("Login inválido");
+        }
+      }
+    </script>
+
+  </body>
+  </html>
+  `);
 });
 
 // IP
@@ -22,19 +96,7 @@ app.get("/update-ip", (req, res) => {
   res.json({ success: true, ip });
 });
 
-// PANEL
-app.get("/panel", (req, res) => {
-  res.send(`
-    <html>
-      <body style="background:#111;color:white;text-align:center;padding-top:50px;font-family:Arial;">
-        <h1>Shelby Panel</h1>
-        <button onclick="location.href='/dashboard'">Ir para Dashboard</button>
-      </body>
-    </html>
-  `);
-});
-
-// DASHBOARD (SEM ERRO)
+// DASHBOARD (PROTECTED)
 app.get("/dashboard", (req, res) => {
 
   let rows = "";
@@ -52,7 +114,7 @@ app.get("/dashboard", (req, res) => {
   res.send(`
   <html>
   <head>
-    <title>Shelby PRO Dashboard</title>
+    <title>Dashboard</title>
     <style>
       body {
         margin: 0;
@@ -64,10 +126,9 @@ app.get("/dashboard", (req, res) => {
       .header {
         padding: 20px;
         background: #111827;
+        text-align: center;
         font-size: 22px;
         font-weight: bold;
-        text-align: center;
-        border-bottom: 1px solid #222;
       }
 
       .cards {
@@ -83,7 +144,6 @@ app.get("/dashboard", (req, res) => {
         border-radius: 10px;
         width: 200px;
         text-align: center;
-        box-shadow: 0 0 10px rgba(0,0,0,0.4);
       }
 
       table {
@@ -91,12 +151,10 @@ app.get("/dashboard", (req, res) => {
         margin: 30px auto;
         border-collapse: collapse;
         background: #111827;
-        border-radius: 10px;
-        overflow: hidden;
       }
 
       th, td {
-        padding: 12px;
+        padding: 10px;
         border-bottom: 1px solid #222;
         text-align: center;
       }
@@ -105,17 +163,8 @@ app.get("/dashboard", (req, res) => {
         background: #1f2937;
       }
 
-      tr:hover {
-        background: #1b2436;
-      }
-
-      .buttons {
-        text-align: center;
-        margin-top: 20px;
-      }
-
       button {
-        padding: 10px 15px;
+        padding: 10px;
         margin: 5px;
         border: none;
         border-radius: 6px;
@@ -123,17 +172,13 @@ app.get("/dashboard", (req, res) => {
         background: #3b82f6;
         color: white;
       }
-
-      button:hover {
-        background: #2563eb;
-      }
     </style>
   </head>
 
   <body>
 
     <div class="header">
-      🛡 Shelby PRO Dashboard
+      🛡 Shelby Dashboard
     </div>
 
     <div class="cards">
@@ -148,9 +193,9 @@ app.get("/dashboard", (req, res) => {
       </div>
     </div>
 
-    <div class="buttons">
+    <div style="text-align:center;">
       <button onclick="location.reload()">Atualizar</button>
-      <button onclick="fetch('/clear').then(()=>location.reload())">Limpar Logs</button>
+      <button onclick="fetch('/clear').then(()=>location.reload())">Limpar</button>
     </div>
 
     <table>
