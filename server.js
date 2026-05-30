@@ -3,79 +3,129 @@ const app = express();
 
 app.use(express.json());
 
-let logs = [];
+/* =========================
+   USUÁRIOS (COM CREDITOS)
+========================= */
+let users = [
+  { user: "admin", pass: "1234", credits: 100 }
+];
 
-// LOGIN SIMPLES (sessão fake)
-let logged = false;
+let sessions = {};
+let keys = [];
 
-// HOME (LOGIN)
+/* =========================
+   LOGIN PAGE (NETFLIX STYLE)
+========================= */
 app.get("/", (req, res) => {
   res.send(`
   <html>
   <head>
-    <title>Login</title>
+    <title>Companhia Shelby</title>
+
     <style>
       body {
-        margin: 0;
-        background: #0b0f19;
-        color: white;
+        margin:0;
         font-family: Arial;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
+        background: black;
+        color: white;
+      }
+
+      .top {
+        text-align:center;
+        padding:20px;
+        font-size:28px;
+        font-weight:bold;
+      }
+
+      .status {
+        text-align:center;
+        color:#00ff88;
+        margin-bottom:20px;
+      }
+
+      .dot {
+        height:10px;
+        width:10px;
+        background:#00ff88;
+        border-radius:50%;
+        display:inline-block;
+        animation:pulse 1s infinite;
+        margin-right:6px;
+      }
+
+      @keyframes pulse {
+        0% {transform:scale(1);}
+        50% {transform:scale(1.5);}
+        100% {transform:scale(1);}
       }
 
       .box {
-        background: #111827;
-        padding: 30px;
-        border-radius: 12px;
-        width: 300px;
-        text-align: center;
+        width:320px;
+        margin:auto;
+        margin-top:40px;
+        background:#111;
+        padding:25px;
+        border-radius:10px;
+        box-shadow:0 0 20px #222;
       }
 
       input {
-        width: 100%;
-        padding: 10px;
-        margin-top: 10px;
-        border-radius: 6px;
-        border: none;
+        width:100%;
+        padding:10px;
+        margin-top:10px;
+        background:#000;
+        border:1px solid #333;
+        color:white;
       }
 
       button {
-        width: 100%;
-        padding: 10px;
-        margin-top: 15px;
-        border: none;
-        border-radius: 6px;
-        background: #3b82f6;
-        color: white;
-        cursor: pointer;
+        width:100%;
+        padding:10px;
+        margin-top:15px;
+        background:white;
+        color:black;
+        border:none;
+        cursor:pointer;
+        font-weight:bold;
       }
     </style>
   </head>
 
   <body>
 
-    <div class="box">
-      <h2>🔐 Shelby Login</h2>
+    <div class="top">🏢 Companhia Shelby</div>
 
-      <input id="user" placeholder="usuário" />
-      <input id="pass" type="password" placeholder="senha" />
+    <div class="status">
+      <span class="dot"></span> Servidor Online
+    </div>
+
+    <div class="box">
+      <h3>Login</h3>
+
+      <input id="user" placeholder="usuario">
+      <input id="pass" type="password" placeholder="senha">
 
       <button onclick="login()">Entrar</button>
     </div>
 
     <script>
       function login(){
-        const u = document.getElementById("user").value;
-        const p = document.getElementById("pass").value;
-
-        if(u === "admin" && p === "1234"){
-          window.location.href = "/dashboard";
-        } else {
-          alert("Login inválido");
-        }
+        fetch("/login", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            user:document.getElementById("user").value,
+            pass:document.getElementById("pass").value
+          })
+        })
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.ok){
+            window.location="/dashboard?u="+d.user;
+          } else {
+            alert("erro login");
+          }
+        })
       }
     </script>
 
@@ -84,30 +134,37 @@ app.get("/", (req, res) => {
   `);
 });
 
-// IP
-app.get("/update-ip", (req, res) => {
-  const ip =
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
-    req.socket.remoteAddress ||
-    "sem ip";
+/* =========================
+   LOGIN BACKEND
+========================= */
+app.post("/login", (req, res) => {
+  const { user, pass } = req.body;
 
-  logs.push({ ip, time: new Date().toISOString() });
+  const u = users.find(x => x.user === user && x.pass === pass);
 
-  res.json({ success: true, ip });
+  if(!u) return res.json({ ok:false });
+
+  const token = Math.random().toString(36).substring(2);
+
+  sessions[token] = user;
+
+  res.json({ ok:true, user, token });
 });
 
-// DASHBOARD (PROTECTED)
+/* =========================
+   DASHBOARD (NETFLIX STYLE)
+========================= */
 app.get("/dashboard", (req, res) => {
 
-  let rows = "";
+  let user = users[0];
 
-  logs.slice().reverse().forEach((l, i) => {
-    rows += `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${l.ip}</td>
-        <td>${l.time}</td>
-      </tr>
+  let keyList = "";
+
+  keys.slice().reverse().forEach((k,i)=>{
+    keyList += `
+      <div style="padding:8px;border-bottom:1px solid #222;">
+        ${k.type} - ${k.key}
+      </div>
     `;
   });
 
@@ -117,110 +174,143 @@ app.get("/dashboard", (req, res) => {
     <title>Dashboard</title>
     <style>
       body {
-        margin: 0;
-        font-family: Arial;
-        background: #0b0f19;
-        color: white;
+        margin:0;
+        font-family:Arial;
+        background:black;
+        color:white;
       }
 
-      .header {
-        padding: 20px;
-        background: #111827;
-        text-align: center;
-        font-size: 22px;
-        font-weight: bold;
+      .top {
+        padding:20px;
+        text-align:center;
+        font-size:22px;
+        background:#111;
       }
 
-      .cards {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        margin-top: 20px;
+      .grid {
+        display:flex;
+        gap:15px;
+        justify-content:center;
+        margin-top:20px;
       }
 
       .card {
-        background: #111827;
-        padding: 20px;
-        border-radius: 10px;
-        width: 200px;
-        text-align: center;
+        background:#111;
+        padding:15px;
+        width:150px;
+        text-align:center;
+        border-radius:10px;
       }
 
-      table {
-        width: 90%;
-        margin: 30px auto;
-        border-collapse: collapse;
-        background: #111827;
+      .panel {
+        width:400px;
+        margin:auto;
+        margin-top:30px;
+        background:#111;
+        padding:20px;
+        border-radius:10px;
       }
 
-      th, td {
-        padding: 10px;
-        border-bottom: 1px solid #222;
-        text-align: center;
-      }
-
-      th {
-        background: #1f2937;
+      input {
+        width:100%;
+        padding:10px;
+        margin-top:10px;
+        background:black;
+        color:white;
+        border:1px solid #333;
       }
 
       button {
-        padding: 10px;
-        margin: 5px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        background: #3b82f6;
-        color: white;
+        width:100%;
+        padding:10px;
+        margin-top:10px;
+        background:white;
+        border:none;
+        cursor:pointer;
       }
     </style>
   </head>
 
   <body>
 
-    <div class="header">
-      🛡 Shelby Dashboard
+    <div class="top">
+      📺 Companhia Shelby Dashboard
     </div>
 
-    <div class="cards">
+    <div class="grid">
       <div class="card">
-        <h2>${logs.length}</h2>
-        <p>Total Logs</p>
+        💰 Créditos<br>${user.credits}
       </div>
 
       <div class="card">
-        <h2>ONLINE</h2>
-        <p>Status</p>
+        🔑 Keys<br>${keys.length}
       </div>
     </div>
 
-    <div style="text-align:center;">
-      <button onclick="location.reload()">Atualizar</button>
-      <button onclick="fetch('/clear').then(()=>location.reload())">Limpar</button>
+    <div class="panel">
+
+      <h3>Gerar Keys</h3>
+
+      <input id="type" placeholder="1d / 3d / 7d / 30d">
+      <input id="qtd" placeholder="quantidade">
+
+      <button onclick="gen()">Gerar</button>
+
+      <h4>Keys geradas</h4>
+      ${keyList}
+
     </div>
 
-    <table>
-      <tr>
-        <th>#</th>
-        <th>IP</th>
-        <th>Hora</th>
-      </tr>
-      ${rows}
-    </table>
+    <script>
+      function gen(){
+        fetch("/generate-key",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            type:document.getElementById("type").value,
+            qtd:document.getElementById("qtd").value
+          })
+        }).then(()=>location.reload());
+      }
+    </script>
 
   </body>
   </html>
   `);
 });
 
-// CLEAR
-app.get("/clear", (req, res) => {
-  logs = [];
-  res.json({ ok: true });
+/* =========================
+   GERAR KEYS (COM CREDITOS)
+========================= */
+app.post("/generate-key", (req, res) => {
+
+  let { type, qtd } = req.body;
+
+  qtd = parseInt(qtd || 1);
+
+  const user = users[0];
+
+  if(user.credits < qtd){
+    return res.json({ error:"sem creditos" });
+  }
+
+  user.credits -= qtd;
+
+  for(let i=0;i<qtd;i++){
+    keys.push({
+      type,
+      key: "SHELBY-" + Math.random().toString(36).substring(2,8).toUpperCase()
+    });
+  }
+
+  res.json({ ok:true });
 });
 
-// PORT
+/* =========================
+   SERVER
+========================= */
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Rodando na porta " + PORT);
+  console.log("Shelby PRO rodando");
 });
