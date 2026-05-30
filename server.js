@@ -3,15 +3,18 @@ const app = express();
 
 app.use(express.json());
 
-// banco em memória (temporário)
+// banco em memória
 let logs = [];
+
+// senha do painel (muda aqui)
+const ADMIN_PASSWORD = "1234";
 
 // HOME
 app.get("/", (req, res) => {
-  res.send("Shelby Auth System online");
+  res.send("Shelby System online");
 });
 
-// PEGAR IP E SALVAR LOG
+// IP LOGGER
 app.get("/update-ip", (req, res) => {
   const forwarded = req.headers["x-forwarded-for"];
   const realIp = req.headers["x-real-ip"];
@@ -23,83 +26,133 @@ app.get("/update-ip", (req, res) => {
     "sem ip";
 
   logs.push({
-    ip: ip,
+    ip,
     time: new Date().toISOString()
   });
 
-  res.json({
-    success: true,
-    ip: ip
-  });
+  res.json({ success: true, ip });
 });
 
-// VER LOGS JSON
-app.get("/logs", (req, res) => {
-  res.json({
-    total: logs.length,
-    logs: logs
-  });
-});
-
-// LIMPAR LOGS
-app.get("/clear", (req, res) => {
-  logs = [];
-  res.json({
-    success: true,
-    message: "logs limpos"
-  });
-});
-
-// PAINEL WEB
+// LOGIN PAGE
 app.get("/panel", (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Shelby Panel</title>
+        <title>Login Panel</title>
         <style>
           body {
             background: #0f0f0f;
             color: white;
             font-family: Arial;
             text-align: center;
-            padding-top: 50px;
+            padding-top: 100px;
           }
-          .box {
-            background: #1c1c1c;
-            padding: 20px;
-            border-radius: 10px;
-            display: inline-block;
+          input {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
           }
           button {
             padding: 10px;
-            margin: 10px;
+            margin-top: 10px;
             cursor: pointer;
-            border: none;
-            border-radius: 5px;
           }
         </style>
       </head>
       <body>
-        <div class="box">
-          <h1>Shelby Panel</h1>
-          <p>API Online</p>
+        <h2>Login Painel</h2>
+        <input id="pass" type="password" placeholder="senha" />
+        <br>
+        <button onclick="login()">Entrar</button>
 
-          <button onclick="fetch('/logs').then(r=>r.json()).then(d=>alert(JSON.stringify(d, null, 2)))">
-            Ver Logs
-          </button>
+        <script>
+          function login() {
+            const pass = document.getElementById('pass').value;
 
-          <button onclick="fetch('/clear').then(r=>r.json()).then(d=>alert(d.message))">
-            Limpar Logs
-          </button>
-        </div>
+            if(pass === "${ADMIN_PASSWORD}") {
+              window.location.href = "/dashboard";
+            } else {
+              alert("Senha errada");
+            }
+          }
+        </script>
       </body>
     </html>
   `);
 });
 
-// PORTA RAILWAY
+// DASHBOARD
+app.get("/dashboard", (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Dashboard</title>
+        <style>
+          body {
+            background: #111;
+            color: white;
+            font-family: Arial;
+            text-align: center;
+            padding: 20px;
+          }
+          table {
+            margin: auto;
+            border-collapse: collapse;
+            width: 80%;
+          }
+          th, td {
+            border: 1px solid #444;
+            padding: 10px;
+          }
+          th {
+            background: #222;
+          }
+          button {
+            margin: 10px;
+            padding: 10px;
+            cursor: pointer;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Shelby Dashboard</h1>
+
+        <button onclick="fetch('/logs').then(r=>r.json()).then(show)">Atualizar Logs</button>
+        <button onclick="fetch('/clear').then(()=>location.reload())">Limpar Logs</button>
+
+        <div id="table"></div>
+
+        <script>
+          function show(data) {
+            let html = "<table><tr><th>IP</th><th>Data</th></tr>";
+
+            data.logs.forEach(l => {
+              html += `<tr><td>${l.ip}</td><td>${l.time}</td></tr>`;
+            });
+
+            html += "</table>";
+            document.getElementById("table").innerHTML = html;
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// LOGS API
+app.get("/logs", (req, res) => {
+  res.json({ total: logs.length, logs });
+});
+
+// CLEAR
+app.get("/clear", (req, res) => {
+  logs = [];
+  res.json({ success: true });
+});
+
+// PORT
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Servidor rodando na porta " + PORT);
+  console.log("Rodando na porta " + PORT);
 });
