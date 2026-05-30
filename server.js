@@ -62,25 +62,111 @@ app.get("/panel", (req, res) => {
 // DASHBOARD
 app.get("/dashboard", (req, res) => {
   db.all("SELECT * FROM logs ORDER BY id DESC", (err, rows) => {
-    let html = `
-    <html>
-    <body style="background:#0f0f0f;color:white;font-family:Arial;text-align:center;">
-    <h1>Shelby PRO Dashboard</h1>
-    <button onclick="location.reload()">Atualizar</button>
-    <button onclick="fetch('/clear').then(()=>location.reload())">Limpar</button>
-    <table border="1" style="margin:auto;width:80%;margin-top:20px;">
-      <tr><th>ID</th><th>IP</th><th>Hora</th></tr>
-    `;
+    let tableRows = "";
 
     rows.forEach(r => {
-      html += `<tr><td>${r.id}</td><td>${r.ip}</td><td>${r.time}</td></tr>`;
+      tableRows += `
+        <tr>
+          <td>${r.id}</td>
+          <td>${r.ip}</td>
+          <td>${r.time}</td>
+        </tr>
+      `;
     });
 
-    html += "</table></body></html>";
+    res.send(`
+      <html>
+      <head>
+        <title>Shelby PRO Dashboard</title>
+        <style>
+          body {
+            margin: 0;
+            font-family: Arial;
+            background: #0d1117;
+            color: #fff;
+          }
 
-    res.send(html);
+          .topbar {
+            background: #161b22;
+            padding: 20px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            border-bottom: 1px solid #222;
+          }
+
+          .container {
+            padding: 20px;
+          }
+
+          .buttons {
+            margin-bottom: 20px;
+          }
+
+          button {
+            background: #238636;
+            border: none;
+            padding: 10px 15px;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+          }
+
+          button:hover {
+            background: #2ea043;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #161b22;
+            border-radius: 10px;
+            overflow: hidden;
+          }
+
+          th, td {
+            padding: 12px;
+            border-bottom: 1px solid #222;
+            text-align: center;
+          }
+
+          th {
+            background: #1f2937;
+          }
+
+          tr:hover {
+            background: #222;
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="topbar">
+          Shelby PRO Dashboard
+        </div>
+
+        <div class="container">
+
+          <div class="buttons">
+            <button onclick="location.reload()">Atualizar</button>
+            <button onclick="fetch('/clear').then(()=>location.reload())">Limpar Logs</button>
+          </div>
+
+          <table>
+            <tr>
+              <th>ID</th>
+              <th>IP</th>
+              <th>Hora</th>
+            </tr>
+            ${tableRows}
+          </table>
+
+        </div>
+      </body>
+      </html>
+    `);
   });
-});
 
 // LIMPAR LOGS
 app.get("/clear", (req, res) => {
