@@ -5,13 +5,17 @@ app.use(express.json());
 
 // rota principal
 app.get("/", (req, res) => {
-  res.send("API online");
+  res.send("Shelby Company online");
 });
 
-// pegar IP
+// pegar IP real (Railway / proxy safe)
 app.get("/update-ip", (req, res) => {
+  const forwarded = req.headers["x-forwarded-for"];
+  const realIp = req.headers["x-real-ip"];
+
   const ip =
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
+    (forwarded ? forwarded.split(",")[0].trim() : null) ||
+    realIp ||
     req.socket.remoteAddress ||
     "sem ip";
 
@@ -21,7 +25,7 @@ app.get("/update-ip", (req, res) => {
   });
 });
 
-// porta do Railway
+// porta Railway
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
